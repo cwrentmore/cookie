@@ -1,4 +1,6 @@
 import os
+import io
+import numpy as np
 import speech_recognition as sr
 from gtts import gTTS
 import playsound
@@ -7,8 +9,11 @@ import threading
 import time
 import RPi.GPIO as GPIO
 import subprocess
+import sounddevice as sd
+import soundfile as sf
 
 # Initialize OpenAI client
+#client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 client = OpenAI(api_key="YOUR_OPENAI_KEY")
 
 # Servo Setup
@@ -43,14 +48,17 @@ def play_prerecorded():
     # Use subprocess.Popen so the call does not block
     # Use -q quiet mode for no console messages
     try:
-         # set volume to make sure it can be heard - comment if you know your volume works as expected
+         # set volume to make sure it can be heard
          subprocess.run(["amixer", "-D", "hw:P10S", "sset", "PCM", "25%"], check=True)
+
+         # Uncomment if you use Option1 or Option2 to stream audio in the speak function
+         # It takes longer to run those options so these prerecorded audio files can fill in while waiting
          # Run the intro audio
-         time.sleep(5)
-         subprocess.Popen(["/usr/bin/aplay", "-q", "VonShokle.wav"])
+         #time.sleep(5)
+         #subprocess.Popen(["/usr/bin/aplay", "-q", "VonShokle.wav"])
          # Run the ad for ARM (They have the best products and hackathons!)
-         time.sleep(10)
-         subprocess.Popen(["/usr/bin/aplay", "-q", "advertisement.wav"])
+         #time.sleep(10)
+         #subprocess.Popen(["/usr/bin/aplay", "-q", "advertisement.wav"])
     except Exception as e:
          # Avoid crashing if no file
          print(f"Failed to play pre-recorded audio: {e}")
@@ -100,24 +108,50 @@ def ask_openai(prompt):
 def speak(text, servo_thread):
     global servo_running
 
-    #Option 1:  Convert the text to mp3 and then play it
-    tts = gTTS(text=text, lang='en', tld='co.uk')
-    tts.save("response.mp3")
-    os.system("mpg123 response.mp3")
+    try:
+        #Option 1:  Convert the text to mp3 and then play it - not optimized playback
+        #tts = gTTS(text="Now is a great time for an advertisement...Buy more ARM products...I'm almost done executing...please standby.", lang='en', tld='co.uk') 
+        #tts = gTTS(text=text, lang='en', tld='co.uk')
+        #tts.save("response.mp3")
+        #os.system("mpg123 response.mp3")
 
-    #Option 2: Make a new request to OpenAI and stream the file without saving it
-    #audio_response = client.audio.speech.create(
-    #    model="gpt-4o-mini-tts",  # TTS model
-    #    voice="alloy",            # Change voice here
-    #    input=text
-    #)
-    #process = subprocess.Popen(["mpg123", "-q", "-"], stdin=subprocess.PIPE)
-    #process.communicate(audio_response.content)
+        #Option 2: Make a new request to OpenAI and stream the file without saving it
+        #audio_response = client.audio.speech.create(
+        #    model="gpt-4o-mini-tts",  # TTS model
+        #    voice="alloy",            # Change voice here
+        #    input=text
+        #)
+        #process = subprocess.Popen(["mpg123", "-q", "-"], stdin=subprocess.PIPE)
+        #process.communicate(audio_response.content)
 
-    # Stop the servo
-    servo_running = False
-    servo_thread.join()
+        #Option 3: Make a new request to OpenAI and stream buffered wav file in chunks as it is received
+        with client.audio.speech.with_streaming_response.create(
+            model="gpt-4o-mini-tts",  # High-quality TTS model
+            voice="fable",
+            input=text,
+            response_format="wav",
+        ) as response:
+            # Collect streamed audio into memory
+            buffer = io.BytesIO()
+            for chunk in response.iter_bytes():
+                buffer.write(chunk)
+            buffer.seek(0)
 
+            # Decode WAV and play
+            audio, samplerate = sf.read(buffer, dtype='float32')
+            if audio.ndim == 1:  # Ensure stereo shape
+                audio = np.expand_dims(audio, axis=1)
+
+            print("Playing audio...")
+            sd.play(audio, samplerate)
+            sd.wait()
+            print("Playback finished.")
+
+        # Stop the servo
+        servo_running = False
+        servo_thread.join()
+    except Exception as e:
+        print(f"Error during speak playback: {e}")
 
 def main():
   try:
