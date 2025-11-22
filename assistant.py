@@ -53,6 +53,9 @@ def play_prerecorded():
 
          # Uncomment if you use Option1 or Option2 to stream audio in the speak function
          # It takes longer to run those options so these prerecorded audio files can fill in while waiting
+         # A similar process can be used to play an advertisement for a free account or skip the ad for a paid account
+         # I.e., free account uses Option 1 while the paid account uses Option 3.
+
          # Run the intro audio
          #time.sleep(5)
          #subprocess.Popen(["/usr/bin/aplay", "-q", "VonShokle.wav"])
@@ -115,7 +118,7 @@ def speak(text, servo_thread):
         #tts.save("response.mp3")
         #os.system("mpg123 response.mp3")
 
-        #Option 2: Make a new request to OpenAI and stream the file without saving it
+        #Option 2: Make a new request to OpenAI and stream the file without saving it - better but still not optimized due to mp3 audio format and the file needs to fully download and then load into memory before playback
         #audio_response = client.audio.speech.create(
         #    model="gpt-4o-mini-tts",  # TTS model
         #    voice="alloy",            # Change voice here
@@ -125,6 +128,7 @@ def speak(text, servo_thread):
         #process.communicate(audio_response.content)
 
         #Option 3: Make a new request to OpenAI and stream buffered wav file in chunks as it is received
+        #          Optimized for quick playback
         with client.audio.speech.with_streaming_response.create(
             model="gpt-4o-mini-tts",  # High-quality TTS model
             voice="fable",
