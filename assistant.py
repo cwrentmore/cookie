@@ -1,5 +1,8 @@
 # Author: Craig Wrentmore
 # A Project for the DevPost ARM AI Developer Challenge Hackathon
+# If you enjoy this code, please consider making a donation to
+# The Worldwide Mental Health Foundation
+# www.worldwidementalhealth.org
 
 import os
 import io
