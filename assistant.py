@@ -1,3 +1,6 @@
+# Author: Craig Wrentmore
+# A Project for the DevPost ARM AI Developer Challenge Hackathon
+
 import os
 import io
 import numpy as np
@@ -13,7 +16,6 @@ import sounddevice as sd
 import soundfile as sf
 
 # Initialize OpenAI client
-#client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 client = OpenAI(api_key="YOUR_OPENAI_KEY")
 
 # Servo Setup
